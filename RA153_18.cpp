@@ -85,7 +85,7 @@ RA153_18::RA153_18(Tango::DeviceClass *cl, string &s)
 {
 	/*----- PROTECTED REGION ID(RA153_18::constructor_1) ENABLED START -----*/
 	init_device();
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::constructor_1
 }
 //--------------------------------------------------------
@@ -94,7 +94,7 @@ RA153_18::RA153_18(Tango::DeviceClass *cl, const char *s)
 {
 	/*----- PROTECTED REGION ID(RA153_18::constructor_2) ENABLED START -----*/
 	init_device();
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::constructor_2
 }
 //--------------------------------------------------------
@@ -103,7 +103,7 @@ RA153_18::RA153_18(Tango::DeviceClass *cl, const char *s, const char *d)
 {
 	/*----- PROTECTED REGION ID(RA153_18::constructor_3) ENABLED START -----*/
 	init_device();
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::constructor_3
 }
 
@@ -117,9 +117,9 @@ void RA153_18::delete_device()
 {
 	DEBUG_STREAM << "RA153_18::delete_device() " << device_name << endl;
 	/*----- PROTECTED REGION ID(RA153_18::delete_device) ENABLED START -----*/
-	
+
 	//	Delete device allocated objects
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::delete_device
 	delete[] attr_rPosition_read;
 	delete[] attr_aPosition_read;
@@ -137,10 +137,10 @@ void RA153_18::init_device()
 {
 	DEBUG_STREAM << "RA153_18::init_device() create device " << device_name << endl;
 	/*----- PROTECTED REGION ID(RA153_18::init_device_before) ENABLED START -----*/
-	
-	//	Initialization before get_device_property() call
-	
-	/*----- PROTECTED REGION END -----*/	//	RA153_18::init_device_before
+
+		//	Initialization before get_device_property() call
+
+		/*----- PROTECTED REGION END -----*/	//	RA153_18::init_device_before
 	
 
 	//	Get the device properties from database
@@ -151,24 +151,59 @@ void RA153_18::init_device()
 	attr_LeftEnd_read = new Tango::DevBoolean[1];
 	attr_RightEnd_read = new Tango::DevBoolean[1];
 	/*----- PROTECTED REGION ID(RA153_18::init_device) ENABLED START -----*/
-	
-	//	Initialize device
 
-	sp = static_cast<RA153_18Class *>(get_device_class())->sp;
-	if(sp == NULL){
-		static_cast<RA153_18Class *>(get_device_class())->sp = new SP::SerialPort(device.c_str());
+		//	Initialize device
+
 		sp = static_cast<RA153_18Class *>(get_device_class())->sp;
-	}
+		if(sp == NULL){
+			static_cast<RA153_18Class *>(get_device_class())->sp = new SP::SerialPort(device.c_str());
+			sp = static_cast<RA153_18Class *>(get_device_class())->sp;
+		}
 
-	mc = new Motor::MotorClass(sp->sp);
-	mc->setDevice(controllerNumber);
-	mc->setChannel(channel);
+		mc = new Motor::MotorClass(sp->sp);
+		mc->setDevice(controllerNumber);
+		mc->setChannel(channel);
 
-	if(!mc->cmdEcho()){
-		device_state = Tango::FAULT;
-	}
-	
-	/*----- PROTECTED REGION END -----*/	//	RA153_18::init_device
+		if(!mc->cmdEcho()){
+			device_state = Tango::FAULT;
+		}
+
+
+		/* sensor initialisation */
+#ifdef DEBUG_MESSAGE
+		printf("Sensor configure: \n");
+#endif
+		Motor::sSensorConfig s_sensor_config,srx_sensor_config;
+		s_sensor_config.channel = (char) (channel & 0xff);
+		s_sensor_config.nbytes_nbits = mc->setNbitsNbytes(26,4);
+		s_sensor_config.nshift = 0x06;
+		// gray code
+		if(true) {
+			s_sensor_config.flags = (char) (Motor::F_SENSOR_ENABLE | Motor::F_SENSOR_GRAYCODE);
+		}else{
+			s_sensor_config.flags = (char) (Motor::F_SENSOR_ENABLE | Motor::F_SENSOR_GRAYCODE);
+		}
+		s_sensor_config.mask = 0x00000000;
+		srx_sensor_config = s_sensor_config;
+		mc->cmdSensorWconfig(&srx_sensor_config);
+
+
+		/* motor initialisation */
+#ifdef DEBUG_MESSAGE
+		printf("Motor configure: \n");
+#endif
+		Motor::sMotorConfig s_motor_config, srx_motor_config;
+		s_motor_config.channel = (char) (channel & 0xff);
+		s_motor_config.flags = Motor::F_MOTOR_POWER_ON;   // need test! may be just enable flag?
+		s_motor_config.accel = (char) (accelerate & 0xff);
+		s_motor_config.stepping = (char) (stepping & 0xff);
+		s_motor_config.max_idx = speed;
+		srx_motor_config = s_motor_config;
+		mc->cmdMotorWconfig(&srx_motor_config);
+
+		stop();
+
+		/*----- PROTECTED REGION END -----*/	//	RA153_18::init_device
 }
 
 //--------------------------------------------------------
@@ -180,9 +215,9 @@ void RA153_18::init_device()
 void RA153_18::get_device_property()
 {
 	/*----- PROTECTED REGION ID(RA153_18::get_device_property_before) ENABLED START -----*/
-	
+
 	//	Initialize property data members
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::get_device_property_before
 
 
@@ -193,6 +228,8 @@ void RA153_18::get_device_property()
 	dev_prop.push_back(Tango::DbDatum("Accelerate"));
 	dev_prop.push_back(Tango::DbDatum("Speed"));
 	dev_prop.push_back(Tango::DbDatum("ControllerNumber"));
+	dev_prop.push_back(Tango::DbDatum("Stepping"));
+	dev_prop.push_back(Tango::DbDatum("StepsToUnit"));
 
 	//	is there at least one property to be read ?
 	if (dev_prop.size()>0)
@@ -262,12 +299,34 @@ void RA153_18::get_device_property()
 		//	And try to extract ControllerNumber value from database
 		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  controllerNumber;
 
+		//	Try to initialize Stepping from class property
+		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+		if (cl_prop.is_empty()==false)	cl_prop  >>  stepping;
+		else {
+			//	Try to initialize Stepping from default device value
+			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+			if (def_prop.is_empty()==false)	def_prop  >>  stepping;
+		}
+		//	And try to extract Stepping value from database
+		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  stepping;
+
+		//	Try to initialize StepsToUnit from class property
+		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+		if (cl_prop.is_empty()==false)	cl_prop  >>  stepsToUnit;
+		else {
+			//	Try to initialize StepsToUnit from default device value
+			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+			if (def_prop.is_empty()==false)	def_prop  >>  stepsToUnit;
+		}
+		//	And try to extract StepsToUnit value from database
+		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  stepsToUnit;
+
 	}
 
 	/*----- PROTECTED REGION ID(RA153_18::get_device_property_after) ENABLED START -----*/
-	
+
 	//	Check device property data members init
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::get_device_property_after
 }
 
@@ -281,9 +340,9 @@ void RA153_18::always_executed_hook()
 {
 	DEBUG_STREAM << "RA153_18::always_executed_hook()  " << device_name << endl;
 	/*----- PROTECTED REGION ID(RA153_18::always_executed_hook) ENABLED START -----*/
-	
+
 	//	code always executed before all requests
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::always_executed_hook
 }
 
@@ -297,9 +356,9 @@ void RA153_18::read_attr_hardware(TANGO_UNUSED(vector<long> &attr_list))
 {
 	DEBUG_STREAM << "RA153_18::read_attr_hardware(vector<long> &attr_list) entering... " << endl;
 	/*----- PROTECTED REGION ID(RA153_18::read_attr_hardware) ENABLED START -----*/
-	
+
 	//	Add your own code
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::read_attr_hardware
 }
 //--------------------------------------------------------
@@ -312,9 +371,9 @@ void RA153_18::write_attr_hardware(TANGO_UNUSED(vector<long> &attr_list))
 {
 	DEBUG_STREAM << "RA153_18::write_attr_hardware(vector<long> &attr_list) entering... " << endl;
 	/*----- PROTECTED REGION ID(RA153_18::write_attr_hardware) ENABLED START -----*/
-	
+
 	//	Add your own code
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::write_attr_hardware
 }
 
@@ -331,9 +390,16 @@ void RA153_18::read_rPosition(Tango::Attribute &attr)
 {
 	DEBUG_STREAM << "RA153_18::read_rPosition(Tango::Attribute &attr) entering... " << endl;
 	/*----- PROTECTED REGION ID(RA153_18::read_rPosition) ENABLED START -----*/
-	//	Set the attribute value
+
+	mStatus = mc->getMotorStatus();
+	*attr_rPosition_read = (double) (mStatus.leftSteps/stepsToUnit);
+	if(*attr_rPosition_read == 0.0){
+		device_state = Tango::ON;
+		device_status = Tango::STOP;
+	}
+
 	attr.set_value(attr_rPosition_read);
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::read_rPosition
 }
 //--------------------------------------------------------
@@ -352,8 +418,17 @@ void RA153_18::write_rPosition(Tango::WAttribute &attr)
 	Tango::DevDouble	w_val;
 	attr.get_write_value(w_val);
 	/*----- PROTECTED REGION ID(RA153_18::write_rPosition) ENABLED START -----*/
-	
-	
+
+	double value = w_val;
+	if(value > 0 ){
+		mc->moveToLeft(value*stepsToUnit);
+	}else{
+		value = -value;
+		mc->moveToRight(value*stepsToUnit);
+	}
+
+	device_state = Tango::MOVING;
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::write_rPosition
 }
 //--------------------------------------------------------
@@ -369,9 +444,11 @@ void RA153_18::read_aPosition(Tango::Attribute &attr)
 {
 	DEBUG_STREAM << "RA153_18::read_aPosition(Tango::Attribute &attr) entering... " << endl;
 	/*----- PROTECTED REGION ID(RA153_18::read_aPosition) ENABLED START -----*/
-	//	Set the attribute value
+
+	*attr_aPosition_read = (double)(mStatus.sensorValue);
+
 	attr.set_value(attr_aPosition_read);
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::read_aPosition
 }
 //--------------------------------------------------------
@@ -390,8 +467,8 @@ void RA153_18::write_aPosition(Tango::WAttribute &attr)
 	Tango::DevDouble	w_val;
 	attr.get_write_value(w_val);
 	/*----- PROTECTED REGION ID(RA153_18::write_aPosition) ENABLED START -----*/
-	
-	
+
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::write_aPosition
 }
 //--------------------------------------------------------
@@ -407,9 +484,10 @@ void RA153_18::read_LeftEnd(Tango::Attribute &attr)
 {
 	DEBUG_STREAM << "RA153_18::read_LeftEnd(Tango::Attribute &attr) entering... " << endl;
 	/*----- PROTECTED REGION ID(RA153_18::read_LeftEnd) ENABLED START -----*/
-	//	Set the attribute value
+
+	*attr_LeftEnd_read = mStatus.leftEnd;
 	attr.set_value(attr_LeftEnd_read);
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::read_LeftEnd
 }
 //--------------------------------------------------------
@@ -425,9 +503,10 @@ void RA153_18::read_RightEnd(Tango::Attribute &attr)
 {
 	DEBUG_STREAM << "RA153_18::read_RightEnd(Tango::Attribute &attr) entering... " << endl;
 	/*----- PROTECTED REGION ID(RA153_18::read_RightEnd) ENABLED START -----*/
-	//	Set the attribute value
+
+	*attr_RightEnd_read = mStatus.rightEnd;
 	attr.set_value(attr_RightEnd_read);
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::read_RightEnd
 }
 
@@ -441,9 +520,9 @@ void RA153_18::read_RightEnd(Tango::Attribute &attr)
 void RA153_18::add_dynamic_attributes()
 {
 	/*----- PROTECTED REGION ID(RA153_18::add_dynamic_attributes) ENABLED START -----*/
-	
+
 	//	Add your own code to create and add dynamic attributes if any
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::add_dynamic_attributes
 }
 
@@ -458,9 +537,14 @@ void RA153_18::stop()
 {
 	DEBUG_STREAM << "RA153_18::Stop()  - " << device_name << endl;
 	/*----- PROTECTED REGION ID(RA153_18::stop) ENABLED START -----*/
-	
-	//	Add your own code
-	
+
+#ifdef DEBUG_MESSAGE
+	printf("STOP MOTION!\n");
+#endif
+	mc->stopMotion();
+	device_state = Tango::ON;
+	device_status = Tango::STOP;
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::stop
 }
 //--------------------------------------------------------
@@ -473,9 +557,9 @@ void RA153_18::stop()
 void RA153_18::add_dynamic_commands()
 {
 	/*----- PROTECTED REGION ID(RA153_18::add_dynamic_commands) ENABLED START -----*/
-	
+
 	//	Add your own code to create and add dynamic commands if any
-	
+
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::add_dynamic_commands
 }
 

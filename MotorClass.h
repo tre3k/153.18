@@ -137,12 +137,17 @@ namespace Motor {
         uint16_t signature;
     };
 
+    struct motorStatus{
+        bool leftEnd;
+        bool rightEnd;
+        uint32_t leftSteps;
+        uint32_t sensorValue;
+    };
 
     /* CLASS */
     class MotorClass {
     public:
         int channel;
-        bool *busy;
 
     private:
         int device;
@@ -184,8 +189,13 @@ namespace Motor {
         void cmdTaskWrite(sTaskWrite *staskwrite);
         void cmdTaskRead(sTaskRead *staskread);
 
+        void moveToLeft(int steps);
+        void moveToRight(int steps);
+        void stopMotion();
+
         bool cmdEcho();
 
+        struct motorStatus getMotorStatus(void);
 
     };
 }

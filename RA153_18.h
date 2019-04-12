@@ -62,6 +62,8 @@ public:
 	SP::SerialPort *sp = NULL;
 	Motor::MotorClass *mc = NULL;
 
+	Motor::motorStatus mStatus;
+
 /*----- PROTECTED REGION END -----*/	//	RA153_18::Data Members
 
 //	Device property data members
@@ -76,6 +78,10 @@ public:
 	Tango::DevUShort	speed;
 	//	ControllerNumber:	Aka address of controller
 	Tango::DevShort	controllerNumber;
+	//	Stepping:	stepping
+	Tango::DevUShort	stepping;
+	//	StepsToUnit:	
+	Tango::DevDouble	stepsToUnit;
 
 //	Attribute data members
 public:

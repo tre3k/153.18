@@ -24,8 +24,6 @@ int MotorClass::rawWriteRead(char *in_buff, char *out_buff, int write_size, int 
     int i = 0;
     char tmp[16];
 
-    while(*busy);
-    *busy = true;
 #ifdef DEBUG_MESSAGE
     printf("Send: ");
 #endif
@@ -57,7 +55,6 @@ int MotorClass::rawWriteRead(char *in_buff, char *out_buff, int write_size, int 
     printf("\n");
 #endif
 
-    *busy = false;
     return len;
 }
 
@@ -192,4 +189,52 @@ int MotorClass::convertFromGrayCode(int value) {
         value=value>>1;
     }
     return retval;
+}
+
+
+void MotorClass::stopMotion() {
+    Motor::sMotorRW s_motor;
+    s_motor.channel = (char) (channel & 0xff);
+    s_motor.flags = 0x00;			// clean all the flags
+    s_motor.stepl_left = 0x00;		// zero steps
+    cmdMotorWrite(&s_motor);
+}
+
+void MotorClass::moveToLeft(int steps) {
+    Motor::sMotorRW s_motor;
+    s_motor.channel = (char) (channel & 0xff);
+    s_motor.flags = (char) (Motor::F_MOTOR_ENABLE | Motor::F_MOTOR_POWER_ON);
+    s_motor.stepl_left = steps;
+    cmdMotorWrite(&s_motor);
+}
+
+void MotorClass::moveToRight(int steps) {
+    Motor::sMotorRW s_motor;
+    s_motor.channel = (char) (channel & 0xff);
+    s_motor.flags = (char) (Motor::F_MOTOR_ENABLE | Motor::F_MOTOR_POWER_ON | Motor::F_MOTOR_DIRECTION);
+    s_motor.stepl_left = steps;
+    cmdMotorWrite(&s_motor);
+}
+
+struct motorStatus MotorClass::getMotorStatus() {
+    motorStatus ret;
+
+    Motor::sMotorRW srx_motor;
+    Motor::sSensor s_sensor,srx_sensor;
+    srx_motor.channel = (char) (channel & 0xff);
+    s_sensor.channel = (char) (channel & 0xff);
+    cmdMotorRead(&srx_motor);
+
+    srx_sensor = s_sensor;
+    cmdSensorRead(&srx_sensor);
+
+    ret.leftSteps = srx_motor.stepl_left;
+    ret.leftEnd = false;
+    ret.rightEnd = false;
+    if(srx_motor.flags & 0x01) ret.leftEnd = true;
+    if(srx_motor.flags & 0x02) ret.rightEnd = true;
+
+    ret.sensorValue = srx_sensor.value;
+
+    return ret;
 }
