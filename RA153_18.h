@@ -35,7 +35,8 @@
 #define RA153_18_H
 
 #include <tango.h>
-
+#include "SerialPort.h"
+#include "MotorClass.h"
 
 /*----- PROTECTED REGION END -----*/	//	RA153_18.h
 
@@ -57,7 +58,9 @@ class RA153_18 : public TANGO_BASE_CLASS
 
 /*----- PROTECTED REGION ID(RA153_18::Data Members) ENABLED START -----*/
 
-//	Add your own data members
+public:
+	SP::SerialPort *sp = NULL;
+	Motor::MotorClass *mc = NULL;
 
 /*----- PROTECTED REGION END -----*/	//	RA153_18::Data Members
 
@@ -71,6 +74,8 @@ public:
 	Tango::DevUShort	accelerate;
 	//	Speed:	
 	Tango::DevUShort	speed;
+	//	ControllerNumber:	Aka address of controller
+	Tango::DevShort	controllerNumber;
 
 //	Attribute data members
 public:

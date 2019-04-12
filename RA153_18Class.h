@@ -41,6 +41,8 @@
 #include <tango.h>
 #include <RA153_18.h>
 
+#include "SerialPort.h"
+
 
 /*----- PROTECTED REGION END -----*/	//	RA153_18Class.h
 
@@ -150,7 +152,8 @@ class RA153_18Class : public Tango::DeviceClass
 #endif
 {
 	/*----- PROTECTED REGION ID(RA153_18Class::Additionnal DServer data members) ENABLED START -----*/
-	
+	public:
+	SP::SerialPort *sp = NULL;
 	
 	/*----- PROTECTED REGION END -----*/	//	RA153_18Class::Additionnal DServer data members
 

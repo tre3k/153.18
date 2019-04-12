@@ -153,6 +153,20 @@ void RA153_18::init_device()
 	/*----- PROTECTED REGION ID(RA153_18::init_device) ENABLED START -----*/
 	
 	//	Initialize device
+
+	sp = static_cast<RA153_18Class *>(get_device_class())->sp;
+	if(sp == NULL){
+		static_cast<RA153_18Class *>(get_device_class())->sp = new SP::SerialPort(device.c_str());
+		sp = static_cast<RA153_18Class *>(get_device_class())->sp;
+	}
+
+	mc = new Motor::MotorClass(sp->sp);
+	mc->setDevice(controllerNumber);
+	mc->setChannel(channel);
+
+	if(!mc->cmdEcho()){
+		device_state = Tango::FAULT;
+	}
 	
 	/*----- PROTECTED REGION END -----*/	//	RA153_18::init_device
 }
@@ -178,6 +192,7 @@ void RA153_18::get_device_property()
 	dev_prop.push_back(Tango::DbDatum("Channel"));
 	dev_prop.push_back(Tango::DbDatum("Accelerate"));
 	dev_prop.push_back(Tango::DbDatum("Speed"));
+	dev_prop.push_back(Tango::DbDatum("ControllerNumber"));
 
 	//	is there at least one property to be read ?
 	if (dev_prop.size()>0)
@@ -235,6 +250,17 @@ void RA153_18::get_device_property()
 		}
 		//	And try to extract Speed value from database
 		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  speed;
+
+		//	Try to initialize ControllerNumber from class property
+		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+		if (cl_prop.is_empty()==false)	cl_prop  >>  controllerNumber;
+		else {
+			//	Try to initialize ControllerNumber from default device value
+			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+			if (def_prop.is_empty()==false)	def_prop  >>  controllerNumber;
+		}
+		//	And try to extract ControllerNumber value from database
+		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  controllerNumber;
 
 	}
 
