@@ -154,11 +154,15 @@ void RA153_18::init_device()
 
 		//	Initialize device
 
+		/*
 		sp = static_cast<RA153_18Class *>(get_device_class())->sp;
 		if(sp == NULL){
 			static_cast<RA153_18Class *>(get_device_class())->sp = new SP::SerialPort(device.c_str());
 			sp = static_cast<RA153_18Class *>(get_device_class())->sp;
 		}
+		*/
+
+		sp = new SP::SerialPort(device.c_str());
 
 		mc = new Motor::MotorClass(sp->sp);
 		mc->setDevice(controllerNumber);
